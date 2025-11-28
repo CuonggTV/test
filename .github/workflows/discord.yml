@@ -7,6 +7,8 @@ on:
     types: [opened, closed, reopened]
   issues:
     types: [opened, closed, reopened]
+  issue_comment:
+    types: [created]
 
 jobs:
   discord:
@@ -51,6 +53,19 @@ jobs:
             WEBHOOK="$ISSUE_WEBHOOK"
             THREAD_NAME="Issue #$ISSUE_NUMBER"
 
+          elif [ "$EVENT" = "issue_comment" ]; then
+            ISSUE_NUMBER=$(jq -r .issue.number "$GITHUB_EVENT_PATH")
+            USER=$(jq -r .comment.user.login "$GITHUB_EVENT_PATH")
+            COMMENT_BODY=$(jq -r .comment.body "$GITHUB_EVENT_PATH")
+
+            TITLE="💬 New Comment on Issue #$ISSUE_NUMBER"
+            URL="https://github.com/$REPO/issues/$ISSUE_NUMBER"
+            COLOR=10197915
+            DESCRIPTION="**$USER commented:**\n$COMMENT_BODY"
+
+            WEBHOOK="$ISSUE_WEBHOOK"
+            THREAD_NAME="Issue #$ISSUE_NUMBER"
+
           else
             TITLE="GitHub Event"
             URL="https://github.com/$REPO"
@@ -71,7 +86,6 @@ jobs:
               --arg actor "$ACTOR" \
               --arg url "$URL" \
               --arg avatar "$AVATAR" \
-              --arg event "$EVENT" \
               --arg ref "$REF" \
               --arg sha "$SHA" \
               --arg thread "$THREAD_NAME" \
@@ -105,7 +119,6 @@ jobs:
               --arg actor "$ACTOR" \
               --arg url "$URL" \
               --arg avatar "$AVATAR" \
-              --arg event "$EVENT" \
               --arg ref "$REF" \
               --arg sha "$SHA" \
               --argjson color "$COLOR" \
