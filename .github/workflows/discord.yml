@@ -55,11 +55,17 @@ jobs:
               COLOR=3066993
               STATUS="🟢 Opened PR"
             elif [ "$ACTION" = "closed" ]; then
-              COLOR=15158332
-              STATUS="🔴 Closed PR"
+              MERGED=$(jq -r .pull_request.merged "$GITHUB_EVENT_PATH")
+              if [ "$MERGED" = "true" ]; then
+                COLOR=10181046    # tím
+                STATUS="🟣 Merged PR"
+              else
+                COLOR=15158332    # đỏ
+                STATUS="🔴 Closed PR"
+              fi
             else
-              COLOR=10181046
-              STATUS="🟣 Reopened PR"
+              COLOR=3066993
+              STATUS="🟢 Reopened PR"
             fi
 
             TITLE="🔀 Pull Request #$PR_NUMBER"
