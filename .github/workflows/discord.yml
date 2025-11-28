@@ -14,13 +14,16 @@ jobs:
     steps:
       - name: Send message to Discord
         env:
-          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          PUSH_WEBHOOK: ${{ secrets.DISCORD_PUSH_WEBHOOK }}
+          PR_WEBHOOK: ${{ secrets.DISCORD_PR_WEBHOOK }}
+          ISSUE_WEBHOOK: ${{ secrets.DISCORD_ISSUE_WEBHOOK }}
         run: |
           EVENT="$GITHUB_EVENT_NAME"
           ACTOR="$GITHUB_ACTOR"
           REPO="$GITHUB_REPOSITORY"
           REF="$GITHUB_REF"
           SHA="$GITHUB_SHA"
+          WEBHOOK="$PUSH_WEBHOOK"
 
           # Determine message + color based on event
           if [ "$EVENT" = "push" ]; then
@@ -28,6 +31,7 @@ jobs:
             URL="https://github.com/$REPO/commit/$SHA"
             COLOR=41983
             DESCRIPTION="A new commit was pushed."
+            WEBHOOK="$PUSH_WEBHOOK"
 
           elif [ "$EVENT" = "pull_request" ]; then
             PR_NUMBER=$(jq -r .pull_request.number "$GITHUB_EVENT_PATH")
@@ -35,6 +39,9 @@ jobs:
             URL="https://github.com/$REPO/pull/$PR_NUMBER"
             COLOR=8228351
             DESCRIPTION=$(jq -r .pull_request.title "$GITHUB_EVENT_PATH")
+            THREAD_NAME="Pull Request #$PR_NUMBER"
+            WEBHOOK="$ISSUE_WEBHOOK"
+
 
           elif [ "$EVENT" = "issues" ]; then
             ISSUE_NUMBER=$(jq -r .issue.number "$GITHUB_EVENT_PATH")
@@ -42,6 +49,9 @@ jobs:
             URL="https://github.com/$REPO/issues/$ISSUE_NUMBER"
             COLOR=16747527
             DESCRIPTION=$(jq -r .issue.title "$GITHUB_EVENT_PATH")
+            THREAD_NAME="Issue #$ISSUE_NUMBER"
+            WEBHOOK="$PR_WEBHOOK"
+
 
           else
             TITLE="GitHub Event"
