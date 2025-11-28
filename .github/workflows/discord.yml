@@ -4,7 +4,9 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    types: [opened, closed]
+    types: [opened, closed, reopened]
+  issues:
+    types: [opened, closed, reopened]
 
 jobs:
   discord:
@@ -14,23 +16,72 @@ jobs:
         env:
           WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
+          EVENT="$GITHUB_EVENT_NAME"
+          ACTOR="$GITHUB_ACTOR"
+          REPO="$GITHUB_REPOSITORY"
+          REF="$GITHUB_REF"
+          SHA="$GITHUB_SHA"
+
+          # Determine message + color based on event
+          if [ "$EVENT" = "push" ]; then
+            TITLE="📌 New Push to $REPO"
+            URL="https://github.com/$REPO/commit/$SHA"
+            COLOR=41983
+            DESCRIPTION="A new commit was pushed."
+
+          elif [ "$EVENT" = "pull_request" ]; then
+            PR_NUMBER=$(jq -r .pull_request.number "$GITHUB_EVENT_PATH")
+            TITLE="🔀 Pull Request #$PR_NUMBER"
+            URL="https://github.com/$REPO/pull/$PR_NUMBER"
+            COLOR=8228351
+            DESCRIPTION=$(jq -r .pull_request.title "$GITHUB_EVENT_PATH")
+
+          elif [ "$EVENT" = "issues" ]; then
+            ISSUE_NUMBER=$(jq -r .issue.number "$GITHUB_EVENT_PATH")
+            TITLE="📝 Issue #$ISSUE_NUMBER"
+            URL="https://github.com/$REPO/issues/$ISSUE_NUMBER"
+            COLOR=16747527
+            DESCRIPTION=$(jq -r .issue.title "$GITHUB_EVENT_PATH")
+            
+          else
+            TITLE="GitHub Event"
+            URL="https://github.com/$REPO"
+            COLOR=3092790
+            DESCRIPTION="Activity detected on repository"
+          fi
+
+          AVATAR="https://github.com/$ACTOR.png"
+
           PAYLOAD=$(jq -n \
-            --arg repo "$GITHUB_REPOSITORY" \
-            --arg event "$GITHUB_EVENT_NAME" \
-            --arg actor "$GITHUB_ACTOR" \
-            --arg sha "$GITHUB_SHA" \
-            --arg ref "$GITHUB_REF" \
+            --arg title "$TITLE" \
+            --arg desc "$DESCRIPTION" \
+            --arg repo "$REPO" \
+            --arg actor "$ACTOR" \
+            --arg url "$URL" \
+            --arg avatar "$AVATAR" \
+            --arg event "$EVENT" \
+            --arg ref "$REF" \
+            --arg sha "$SHA" \
+            --argjson color "$COLOR" \
             '{
+              "username": "GitHub Bot",
+              "avatar_url": $avatar,
               "embeds": [{
-                "title": "🚀 GitHub Notification",
-                "color": 4886754,
+                "title": $title,
+                "url": $url,
+                "description": $desc,
+                "color": $color,
+                "author": {
+                  "name": $actor,
+                  "icon_url": $avatar
+                },
                 "fields": [
                   {"name": "📦 Repository", "value": $repo, "inline": false},
                   {"name": "⚡ Event", "value": $event, "inline": true},
-                  {"name": "👤 Triggered by", "value": $actor, "inline": true},
-                  {"name": "🔀 Branch", "value": $ref, "inline": false},
-                  {"name": "🧩 Commit", "value": $sha, "inline": false}
-                ]
+                  {"name": "🔀 Ref / Branch", "value": $ref, "inline": true},
+                  {"name": "🧩 Commit SHA", "value": $sha, "inline": false}
+                ],
+                "thumbnail": { "url": $avatar }
               }]
             }')
 
