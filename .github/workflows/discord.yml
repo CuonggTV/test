@@ -42,7 +42,7 @@ jobs:
             URL="https://github.com/$REPO/issues/$ISSUE_NUMBER"
             COLOR=16747527
             DESCRIPTION=$(jq -r .issue.title "$GITHUB_EVENT_PATH")
-            
+
           else
             TITLE="GitHub Event"
             URL="https://github.com/$REPO"
@@ -65,7 +65,6 @@ jobs:
             --argjson color "$COLOR" \
             '{
               "username": "GitHub Bot",
-              "avatar_url": $avatar,
               "embeds": [{
                 "title": $title,
                 "url": $url,
@@ -76,10 +75,9 @@ jobs:
                   "icon_url": $avatar
                 },
                 "fields": [
-                  {"name": "📦 Repository", "value": $repo, "inline": false},
-                  {"name": "⚡ Event", "value": $event, "inline": true},
+                  {"name": "📦 Repository", "value": $repo, "inline": true},
                   {"name": "🔀 Ref / Branch", "value": $ref, "inline": true},
-                  {"name": "🧩 Commit SHA", "value": $sha, "inline": false}
+                  {"name": "🧩 Commit SHA", "value": $sha, "inline": false},
                 ],
                 "thumbnail": { "url": $avatar }
               }]
