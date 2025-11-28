@@ -4,15 +4,37 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    types: [opened]
+    types: [opened, closed]
 
 jobs:
   discord:
     runs-on: ubuntu-latest
     steps:
       - name: Send message to Discord
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
+          PAYLOAD=$(jq -n \
+            --arg repo "$GITHUB_REPOSITORY" \
+            --arg event "$GITHUB_EVENT_NAME" \
+            --arg actor "$GITHUB_ACTOR" \
+            --arg sha "$GITHUB_SHA" \
+            --arg ref "$GITHUB_REF" \
+            '{
+              "embeds": [{
+                "title": "🚀 GitHub Notification",
+                "color": 4886754,
+                "fields": [
+                  {"name": "📦 Repository", "value": $repo, "inline": false},
+                  {"name": "⚡ Event", "value": $event, "inline": true},
+                  {"name": "👤 Triggered by", "value": $actor, "inline": true},
+                  {"name": "🔀 Branch", "value": $ref, "inline": false},
+                  {"name": "🧩 Commit", "value": $sha, "inline": false}
+                ]
+              }]
+            }')
+
           curl -H "Content-Type: application/json" \
-          -X POST \
-          -d "{\"content\": \"📌 Repo: $GITHUB_REPOSITORY\n🔧 Event: $GITHUB_EVENT_NAME\"}" \
-          ${{ secrets.DISCORD_WEBHOOK }}
+               -X POST \
+               -d "$PAYLOAD" \
+               "$WEBHOOK"
