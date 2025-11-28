@@ -34,7 +34,10 @@ jobs:
           # PUSH EVENT
           ############################################################
           if [ "$EVENT" = "push" ]; then
-            TITLE="📌 New Push to $REPO"
+            SHORT_SHA=$(echo "$SHA" | cut -c1-7)
+            BRANCH=$(echo "$REF" | sed 's#refs/heads/##')
+
+            TITLE="📌 New commit $SHORT_SHA pushed to $BRANCH"
             URL="https://github.com/$REPO/commit/$SHA"
             COLOR=41983
             DESCRIPTION="A new commit was pushed by **$ACTOR**."
@@ -99,20 +102,33 @@ jobs:
             COLOR=15844367
             WEBHOOK="$ISSUE_WEBHOOK"
           fi
-
+          
           ############################################################
           # BUILD EMBED PAYLOAD
           ############################################################
+          # Base fields (common)
+          FIELDS=$(jq -n \
+            --arg repo "$REPO" \
+            --arg ref "$REF" \
+            '[
+              {"name": "📦 Repository", "value": $repo, "inline": true},
+              {"name": "🔀 Ref / Branch", "value": $ref, "inline": true}
+            ]')
+
+          # Add commit SHA only for push event
+          if [ "$EVENT" = "push" ]; then
+            FIELDS=$(echo "$FIELDS" | jq --arg sha "$SHA" \
+              '. += [{"name": "🧩 Commit SHA", "value": $sha, "inline": false}]')
+          fi
+
           PAYLOAD=$(jq -n \
             --arg title "$TITLE" \
             --arg desc "$DESCRIPTION" \
-            --arg repo "$REPO" \
             --arg actor "$ACTOR" \
-            --arg url "$URL" \
             --arg avatar "$AVATAR" \
-            --arg ref "$REF" \
-            --arg sha "$SHA" \
+            --arg url "$URL" \
             --argjson color "$COLOR" \
+            --argjson fields "$FIELDS" \
             '{
               "username": "GitHub Bot",
               "embeds": [{
@@ -124,11 +140,7 @@ jobs:
                   "name": $actor,
                   "icon_url": $avatar
                 },
-                "fields": [
-                  {"name": "📦 Repository", "value": $repo, "inline": true},
-                  {"name": "🔀 Ref / Branch", "value": $ref, "inline": true},
-                  {"name": "🧩 Commit SHA", "value": $sha, "inline": false}
-                ],
+                "fields": $fields,
                 "thumbnail": { "url": $avatar }
               }]
             }')
