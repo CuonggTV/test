@@ -9,8 +9,6 @@ on:
     types: [opened, closed, reopened]
   issue_comment:
     types: [created]
-  issue_comment:
-    types: [created]
 
 jobs:
   discord:
@@ -18,9 +16,6 @@ jobs:
     steps:
       - name: Send message to Discord
         env:
-          PUSH_WEBHOOK: ${{ secrets.DISCORD_PUSH_WEBHOOK }}
-          PR_WEBHOOK: ${{ secrets.DISCORD_PR_WEBHOOK }}
-          ISSUE_WEBHOOK: ${{ secrets.DISCORD_ISSUE_WEBHOOK }}
           PUSH_WEBHOOK: ${{ secrets.DISCORD_PUSH_WEBHOOK }}
           PR_WEBHOOK: ${{ secrets.DISCORD_PR_WEBHOOK }}
           ISSUE_WEBHOOK: ${{ secrets.DISCORD_ISSUE_WEBHOOK }}
