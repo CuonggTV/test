@@ -99,10 +99,10 @@ jobs:
 
             TITLE="💬 New Comment on Issue #$ISSUE_NUMBER"
             DESCRIPTION="**$ACTOR** commented:\n> $COMMENT_BODY"
-            COLOR=15844367
+            COLOR=16711680   
             WEBHOOK="$ISSUE_WEBHOOK"
           fi
-          
+
           ############################################################
           # BUILD EMBED PAYLOAD
           ############################################################
