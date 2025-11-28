@@ -23,7 +23,6 @@ jobs:
           REPO="$GITHUB_REPOSITORY"
           REF="$GITHUB_REF"
           SHA="$GITHUB_SHA"
-          WEBHOOK="$PUSH_WEBHOOK"
 
           # Determine message + color based on event
           if [ "$EVENT" = "push" ]; then
@@ -32,6 +31,7 @@ jobs:
             COLOR=41983
             DESCRIPTION="A new commit was pushed."
             WEBHOOK="$PUSH_WEBHOOK"
+            THREAD_NAME=""
 
           elif [ "$EVENT" = "pull_request" ]; then
             PR_NUMBER=$(jq -r .pull_request.number "$GITHUB_EVENT_PATH")
@@ -39,9 +39,8 @@ jobs:
             URL="https://github.com/$REPO/pull/$PR_NUMBER"
             COLOR=8228351
             DESCRIPTION=$(jq -r .pull_request.title "$GITHUB_EVENT_PATH")
+            WEBHOOK="$PR_WEBHOOK"
             THREAD_NAME="Pull Request #$PR_NUMBER"
-            WEBHOOK="$ISSUE_WEBHOOK"
-
 
           elif [ "$EVENT" = "issues" ]; then
             ISSUE_NUMBER=$(jq -r .issue.number "$GITHUB_EVENT_PATH")
@@ -49,49 +48,87 @@ jobs:
             URL="https://github.com/$REPO/issues/$ISSUE_NUMBER"
             COLOR=16747527
             DESCRIPTION=$(jq -r .issue.title "$GITHUB_EVENT_PATH")
+            WEBHOOK="$ISSUE_WEBHOOK"
             THREAD_NAME="Issue #$ISSUE_NUMBER"
-            WEBHOOK="$PR_WEBHOOK"
-
 
           else
             TITLE="GitHub Event"
             URL="https://github.com/$REPO"
             COLOR=3092790
             DESCRIPTION="Activity detected on repository"
+            WEBHOOK="$PUSH_WEBHOOK"
+            THREAD_NAME=""
           fi
 
           AVATAR="https://github.com/$ACTOR.png"
 
-          PAYLOAD=$(jq -n \
-            --arg title "$TITLE" \
-            --arg desc "$DESCRIPTION" \
-            --arg repo "$REPO" \
-            --arg actor "$ACTOR" \
-            --arg url "$URL" \
-            --arg avatar "$AVATAR" \
-            --arg event "$EVENT" \
-            --arg ref "$REF" \
-            --arg sha "$SHA" \
-            --argjson color "$COLOR" \
-            '{
-              "username": "GitHub Bot",
-              "embeds": [{
-                "title": $title,
-                "url": $url,
-                "description": $desc,
-                "color": $color,
-                "author": {
-                  "name": $actor,
-                  "icon_url": $avatar
-                },
-                "fields": [
-                  {"name": "📦 Repository", "value": $repo, "inline": true},
-                  {"name": "🔀 Ref / Branch", "value": $ref, "inline": true},
-                  {"name": "🧩 Commit SHA", "value": $sha, "inline": false}
-                ],
-                "thumbnail": { "url": $avatar }
-              }]
-            }')
+          # Build payload with thread_name ONLY IF not empty
+          if [ -n "$THREAD_NAME" ]; then
+            PAYLOAD=$(jq -n \
+              --arg title "$TITLE" \
+              --arg desc "$DESCRIPTION" \
+              --arg repo "$REPO" \
+              --arg actor "$ACTOR" \
+              --arg url "$URL" \
+              --arg avatar "$AVATAR" \
+              --arg event "$EVENT" \
+              --arg ref "$REF" \
+              --arg sha "$SHA" \
+              --arg thread "$THREAD_NAME" \
+              --argjson color "$COLOR" \
+              '{
+                "username": "GitHub Bot",
+                "thread_name": $thread,
+                "embeds": [{
+                  "title": $title,
+                  "url": $url,
+                  "description": $desc,
+                  "color": $color,
+                  "author": {
+                    "name": $actor,
+                    "icon_url": $avatar
+                  },
+                  "fields": [
+                    {"name": "📦 Repository", "value": $repo, "inline": true},
+                    {"name": "🔀 Ref / Branch", "value": $ref, "inline": true},
+                    {"name": "🧩 Commit SHA", "value": $sha, "inline": false}
+                  ],
+                  "thumbnail": { "url": $avatar }
+                }]
+              }')
+          else
+            # Payload WITHOUT thread_name (for normal channels)
+            PAYLOAD=$(jq -n \
+              --arg title "$TITLE" \
+              --arg desc "$DESCRIPTION" \
+              --arg repo "$REPO" \
+              --arg actor "$ACTOR" \
+              --arg url "$URL" \
+              --arg avatar "$AVATAR" \
+              --arg event "$EVENT" \
+              --arg ref "$REF" \
+              --arg sha "$SHA" \
+              --argjson color "$COLOR" \
+              '{
+                "username": "GitHub Bot",
+                "embeds": [{
+                  "title": $title,
+                  "url": $url,
+                  "description": $desc,
+                  "color": $color,
+                  "author": {
+                    "name": $actor,
+                    "icon_url": $avatar
+                  },
+                  "fields": [
+                    {"name": "📦 Repository", "value": $repo, "inline": true},
+                    {"name": "🔀 Ref / Branch", "value": $ref, "inline": true},
+                    {"name": "🧩 Commit SHA", "value": $sha, "inline": false}
+                  ],
+                  "thumbnail": { "url": $avatar }
+                }]
+              }')
+          fi
 
           curl -H "Content-Type: application/json" \
                -X POST \
