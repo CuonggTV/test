@@ -7,6 +7,8 @@ on:
     types: [opened, closed, reopened]
   issues:
     types: [opened, closed, reopened]
+  issue_comment:
+    types: [created]
 
 jobs:
   discord:
@@ -14,7 +16,9 @@ jobs:
     steps:
       - name: Send message to Discord
         env:
-          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          PUSH_WEBHOOK: ${{ secrets.DISCORD_PUSH_WEBHOOK }}
+          PR_WEBHOOK: ${{ secrets.DISCORD_PR_WEBHOOK }}
+          ISSUE_WEBHOOK: ${{ secrets.DISCORD_ISSUE_WEBHOOK }}
         run: |
           EVENT="$GITHUB_EVENT_NAME"
           ACTOR="$GITHUB_ACTOR"
@@ -22,12 +26,12 @@ jobs:
           REF="$GITHUB_REF"
           SHA="$GITHUB_SHA"
 
-          # Determine message + color based on event
           if [ "$EVENT" = "push" ]; then
             TITLE="📌 New Push to $REPO"
             URL="https://github.com/$REPO/commit/$SHA"
             COLOR=41983
             DESCRIPTION="A new commit was pushed."
+            WEBHOOK="$PUSH_WEBHOOK"
 
           elif [ "$EVENT" = "pull_request" ]; then
             PR_NUMBER=$(jq -r .pull_request.number "$GITHUB_EVENT_PATH")
@@ -35,6 +39,7 @@ jobs:
             URL="https://github.com/$REPO/pull/$PR_NUMBER"
             COLOR=8228351
             DESCRIPTION=$(jq -r .pull_request.title "$GITHUB_EVENT_PATH")
+            WEBHOOK="$PR_WEBHOOK"
 
           elif [ "$EVENT" = "issues" ]; then
             ISSUE_NUMBER=$(jq -r .issue.number "$GITHUB_EVENT_PATH")
@@ -42,12 +47,18 @@ jobs:
             URL="https://github.com/$REPO/issues/$ISSUE_NUMBER"
             COLOR=16747527
             DESCRIPTION=$(jq -r .issue.title "$GITHUB_EVENT_PATH")
+            WEBHOOK="$ISSUE_WEBHOOK"
 
-          else
-            TITLE="GitHub Event"
-            URL="https://github.com/$REPO"
-            COLOR=3092790
-            DESCRIPTION="Activity detected on repository"
+          elif [ "$EVENT" = "issue_comment" ]; then
+            ISSUE_NUMBER=$(jq -r .issue.number "$GITHUB_EVENT_PATH")
+            USER=$(jq -r .comment.user.login "$GITHUB_EVENT_PATH")
+            COMMENT_BODY=$(jq -r .comment.body "$GITHUB_EVENT_PATH")
+
+            TITLE="💬 New Comment on Issue #$ISSUE_NUMBER"
+            URL="https://github.com/$REPO/issues/$ISSUE_NUMBER"
+            COLOR=10197915
+            DESCRIPTION="**$USER commented:**\n$COMMENT_BODY"
+            WEBHOOK="$ISSUE_WEBHOOK"
           fi
 
           AVATAR="https://github.com/$ACTOR.png"
@@ -59,7 +70,6 @@ jobs:
             --arg actor "$ACTOR" \
             --arg url "$URL" \
             --arg avatar "$AVATAR" \
-            --arg event "$EVENT" \
             --arg ref "$REF" \
             --arg sha "$SHA" \
             --argjson color "$COLOR" \
