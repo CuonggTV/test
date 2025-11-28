@@ -77,7 +77,7 @@ jobs:
                 "fields": [
                   {"name": "📦 Repository", "value": $repo, "inline": true},
                   {"name": "🔀 Ref / Branch", "value": $ref, "inline": true},
-                  {"name": "🧩 Commit SHA", "value": $sha, "inline": false},
+                  {"name": "🧩 Commit SHA", "value": $sha, "inline": false}
                 ],
                 "thumbnail": { "url": $avatar }
               }]
